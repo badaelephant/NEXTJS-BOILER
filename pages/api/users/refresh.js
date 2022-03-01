@@ -1,48 +1,43 @@
 import { sign, verify, refreshVerify } from "../../../lib/jwt";
+import { connectToDatabase } from "../../../lib/mongodb";
 import jwt from "jsonwebtoken";
-
+import * as cookie from "cookie";
+import { errorjson, successjson } from "../../../lib/return";
 export default async (req, res) => {
-  if (req.headers.authorization && req.headers.refresh) {
-    const authToken = req.headers.authorization.split("Bearer ")[1];
-    const refreshToken = req.headers.refresh;
+  const { db } = await connectToDatabase();
+  const cookies = req.headers.cookie;
+  const { accessToken, refreshToken } = cookie.parse(cookies);
+  if (accessToken && refreshToken) {
     // access token 검증 -> expired여야 함.
-    const authResult = verify(authToken);
-    const decoded = jwt.decode(authToken);
-    if (decoded === null) {
-      res.status(401).send({
-        success: false,
-        message: "No authorized!",
-      });
-    }
+    const authResult = verify(accessToken);
+    const decoded = jwt.decode(accessToken);
+    if (decoded === null) return errorjson(res, "No authorized!");
+
     const refreshResult = refreshVerify(refreshToken, decoded.email);
-    console.log(authResult.message);
+
     if (authResult.success === false && authResult.message === "jwt expired") {
       if (refreshResult.success === false) {
-        res.status(401).send({
-          success: false,
-          message: "No authorized!",
-        });
+        return errorjson(res, "No authorized!");
       } else {
+        let user = null;
+        try {
+          user = await db.collection("user").findOne({ email: decoded.email });
+        } catch (error) {
+          console.log(error);
+        }
         const newAccessToken = sign(user);
-        res.status(200).send({
-          // 새로 발급한 access token과 원래 있던 refresh token 모두 클라이언트에게 반환합니다.
-          ok: true,
-          data: {
-            accessToken: newAccessToken,
-            refreshToken,
-          },
+        return successjson(res, {
+          accessToken: newAccessToken,
+          refreshToken,
         });
       }
     } else {
-      res.status(400).send({
-        success: false,
-        message: "Acess token is not expired!",
-      });
+      return errorjson(res, "Acess token is not expired!");
     }
   } else {
-    res.status(400).send({
-      success: false,
-      message: "Access token and refresh token are need for refresh!",
-    });
+    return errorjson(
+      res,
+      "Access token and refresh token are need for refresh!"
+    );
   }
 };
