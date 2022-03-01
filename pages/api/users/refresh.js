@@ -1,7 +1,7 @@
-const { sign, verify, refreshVerify } = require("../../../lib/jwt");
-const jwt = require("jsonwebtoken");
+import { sign, verify, refreshVerify } from "../../../lib/jwt";
+import jwt from "jsonwebtoken";
 
-const refresh = async (req, res) => {
+export default async (req, res) => {
   if (req.headers.authorization && req.headers.refresh) {
     const authToken = req.headers.authorization.split("Bearer ")[1];
     const refreshToken = req.headers.refresh;
@@ -15,6 +15,7 @@ const refresh = async (req, res) => {
       });
     }
     const refreshResult = refreshVerify(refreshToken, decoded.email);
+    console.log(authResult.message);
     if (authResult.success === false && authResult.message === "jwt expired") {
       if (refreshResult.success === false) {
         res.status(401).send({
@@ -45,4 +46,3 @@ const refresh = async (req, res) => {
     });
   }
 };
-module.exports = refresh;

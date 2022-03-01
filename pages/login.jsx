@@ -1,11 +1,24 @@
+import axios from "axios";
 import { useState } from "react";
-
+import Router from "next/router";
+import cookie from "js-cookie";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const submitLogin = (e) => {
+  const submitLogin = async (e) => {
     e.preventDefault();
-    console.log("hi");
+    try {
+      let user = { email, password };
+      let result = await axios.post("/api/users/login", user);
+
+      if (result.data.success) {
+        cookie.set("accessToken", result.data.data.accessToken);
+        cookie.set("refreshToken", result.data.data.refreshToken);
+        Router.push("/");
+      }
+    } catch (error) {
+      alert(error.message);
+    }
   };
   return (
     <div className="w-[100vw] h-[100vh] flex justify-center items-center">

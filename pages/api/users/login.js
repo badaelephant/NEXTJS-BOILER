@@ -17,6 +17,7 @@ export default async (req, res) => {
         if (!isMatch) return errorjson(res, "password not match");
         const accessToken = jwt.sign(user);
         const refreshToken = jwt.refresh();
+
         redisClient.set(user.email, refreshToken);
         return successjson(res, { accessToken, refreshToken });
       } catch (error) {
